@@ -90,8 +90,8 @@ impl VcfParser {
                         contact.name = value.to_string();
                     }
                 }
-                field if field.starts_with("TEL") => {
-                    // Phone number field
+                field if field.starts_with("TEL") || field.contains(".TEL") => {
+                    // Phone number field (handles both "TEL" and "item1.TEL" formats)
                     if !value.is_empty() {
                         contact.phone_numbers.push(self.normalize_phone_number(value));
                     }
@@ -496,5 +496,27 @@ mod tests {
         
         // Should NOT find the email since there's no proper name (FN field)
         assert_eq!(parser.get_name_by_email("orphan@example.com"), None);
+    }
+
+    #[test]
+    fn test_prefixed_tel_parsing() {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        
+        // Test VCF with prefixed TEL fields (like Jake Xia's contact)
+        writeln!(temp_file, "BEGIN:VCARD").unwrap();
+        writeln!(temp_file, "VERSION:3.0").unwrap();
+        writeln!(temp_file, "FN:Jake Xia").unwrap();
+        writeln!(temp_file, "TEL;type=pref:+16479391227").unwrap();
+        writeln!(temp_file, "item1.TEL:+1 (628) 688-5408").unwrap();
+        writeln!(temp_file, "END:VCARD").unwrap();
+        temp_file.flush().unwrap();
+        
+        let mut parser = VcfParser::new();
+        parser.parse_vcf_file(temp_file.path()).unwrap();
+        
+        // Should find both phone numbers
+        assert_eq!(parser.get_name_by_phone("6479391227"), Some(&"Jake Xia".to_string()));
+        assert_eq!(parser.get_name_by_phone("6286885408"), Some(&"Jake Xia".to_string()));
+        assert_eq!(parser.get_name_by_phone("+1 (628) 688-5408"), Some(&"Jake Xia".to_string()));
     }
 }
