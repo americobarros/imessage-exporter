@@ -110,17 +110,11 @@ impl VcfParser {
     }
 
     /// Store a contact for potential merging with duplicates
-    fn store_contact_for_merging(&mut self, mut contact: Contact) {
-        // If no name is provided, try to use the first email or phone as the name
+    fn store_contact_for_merging(&mut self, contact: Contact) {
+        // Only process contacts that have a proper name (FN field)
+        // Skip contacts without names to avoid incorrect associations
         if contact.name.is_empty() {
-            if !contact.emails.is_empty() {
-                contact.name = contact.emails[0].clone();
-            } else if !contact.phone_numbers.is_empty() {
-                contact.name = contact.phone_numbers[0].clone();
-            } else {
-                // No name, email, or phone - skip this contact
-                return;
-            }
+            return;
         }
 
         let name = contact.name.clone();
@@ -176,12 +170,18 @@ impl VcfParser {
     /// Normalize a phone number by removing formatting characters
     fn normalize_phone_number(&self, phone: &str) -> String {
         // Remove common formatting characters but keep the core number
-        let normalized = phone
+        let mut normalized = phone
             .chars()
             .filter(|c| c.is_ascii_digit() || *c == '+')
             .collect::<String>();
         
-        // Also store the original format in case it's needed
+        // Remove leading country code if present (e.g., +1 for North America)
+        if normalized.starts_with("+1") && normalized.len() == 12 {
+            normalized = normalized[2..].to_string();
+        } else if normalized.starts_with("1") && normalized.len() == 11 {
+            normalized = normalized[1..].to_string();
+        }
+        
         normalized
     }
 
@@ -211,28 +211,32 @@ impl VcfParser {
 
     /// Check if two phone numbers match, accounting for different formatting
     fn phones_match(&self, phone1: &str, phone2: &str) -> bool {
-        // Remove leading country codes and compare
-        let clean1 = self.remove_country_code(phone1);
-        let clean2 = self.remove_country_code(phone2);
+        // Use normalized phone numbers for comparison
+        let norm1 = self.normalize_phone_number(phone1);
+        let norm2 = self.normalize_phone_number(phone2);
         
-        // Check if one contains the other (for cases like +1234567890 vs 234567890)
-        clean1 == clean2 || 
-        clean1.ends_with(&clean2) || 
-        clean2.ends_with(&clean1) ||
-        (clean1.len() >= 7 && clean2.len() >= 7 && clean1.ends_with(&clean2[clean2.len()-7..]))
+        // Exact match first
+        if norm1 == norm2 {
+            return true;
+        }
+        
+        // Only do fuzzy matching if both numbers are reasonable phone number lengths
+        if norm1.len() < 7 || norm2.len() < 7 {
+            return false;
+        }
+        
+        // Check if one ends with the other (for cases with different country code handling)
+        // But only if the difference is reasonable (country code length)
+        if norm1.len() >= 10 && norm2.len() >= 10 {
+            let len_diff = (norm1.len() as i32 - norm2.len() as i32).abs();
+            if len_diff <= 3 {  // Allow for country code differences
+                return norm1.ends_with(&norm2) || norm2.ends_with(&norm1);
+            }
+        }
+        
+        false
     }
 
-    /// Remove common country codes from phone numbers
-    fn remove_country_code(&self, phone: &str) -> String {
-        let phone = phone.strip_prefix('+').unwrap_or(phone);
-        
-        // Remove common North American country code
-        if phone.starts_with('1') && phone.len() == 11 {
-            phone[1..].to_string()
-        } else {
-            phone.to_string()
-        }
-    }
 
     /// Get the total number of contacts loaded
     pub fn contact_count(&self) -> usize {
@@ -279,18 +283,26 @@ mod tests {
     fn test_phone_normalization() {
         let parser = VcfParser::new();
         
-        assert_eq!(parser.normalize_phone_number("+1 (234) 567-8900"), "+12345678900");
+        // New logic removes country codes for consistent matching
+        assert_eq!(parser.normalize_phone_number("+1 (234) 567-8900"), "2345678900");
         assert_eq!(parser.normalize_phone_number("234-567-8900"), "2345678900");
         assert_eq!(parser.normalize_phone_number("(234) 567 8900"), "2345678900");
+        assert_eq!(parser.normalize_phone_number("12345678900"), "2345678900");
     }
 
     #[test]
     fn test_phone_matching() {
         let parser = VcfParser::new();
         
+        // Test exact matches after normalization
         assert!(parser.phones_match("+12345678900", "2345678900"));
         assert!(parser.phones_match("2345678900", "+12345678900"));
-        assert!(parser.phones_match("5678900", "2345678900"));
+        
+        assert!(parser.phones_match("(234) 567-8900", "+1-234-567-8900"));
+        
+        // Test that partial matches are rejected (more precise matching)
+        assert!(!parser.phones_match("5678900", "2345678900"));
+        assert!(!parser.phones_match("234", "2345678900"));
     }
 
     #[test]
@@ -482,7 +494,7 @@ mod tests {
         let mut parser = VcfParser::new();
         parser.parse_vcf_file(temp_file.path()).unwrap();
         
-        // Should use the email as the name
-        assert_eq!(parser.get_name_by_email("orphan@example.com"), Some(&"orphan@example.com".to_string()));
+        // Should NOT find the email since there's no proper name (FN field)
+        assert_eq!(parser.get_name_by_email("orphan@example.com"), None);
     }
 }
