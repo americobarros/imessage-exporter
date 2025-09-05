@@ -117,9 +117,7 @@ This tool targets the current latest public release for Messages.app. It may wor
     - Chatrooms that contain identical contacts (i.e., duplicated handles) are combined
 - Contact Name Resolution
   - Resolves phone numbers and email addresses to contact names using VCF (vCard) files
-  - Supports multiple contact sources:
-    - Command line: `--contacts path/to/contacts.vcf`
-    - Automatic detection: searches for VCF files in `ContactCards/` directory
+  - Usage: `-n path/to/contacts.vcf` or `--contacts path/to/contacts.vcf`
   - Features:
     - Displays contacts as "Name (phone/email)" instead of just the raw identifier
     - Handles multiple phone numbers and emails per contact

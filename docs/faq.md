@@ -109,19 +109,19 @@ However, if you recently deleted a large amount of data from Messages, the datab
 
 ## How do I get contact names to show up instead of phone numbers and emails?
 
-`imessage-exporter` can resolve phone numbers and email addresses to contact names using VCF (vCard) files. There are two ways to provide contact information:
+`imessage-exporter` can resolve phone numbers and email addresses to contact names using VCF (vCard) files.
 
-### Option 1: Command Line (Recommended)
+Use the `-n` or `--contacts` flag to specify a VCF file:
 
-Use the `--contacts` flag to specify a VCF file:
+```bash
+imessage-exporter -f txt -n "/path/to/your/contacts.vcf" -o ./export
+```
+
+Or using the long form:
 
 ```bash
 imessage-exporter -f txt --contacts "/path/to/your/contacts.vcf" -o ./export
 ```
-
-### Option 2: Automatic Detection
-
-Place your VCF file in a `ContactCards/` directory in the same location as the exporter, and it will be automatically detected.
 
 ### How to Export Contacts from macOS
 

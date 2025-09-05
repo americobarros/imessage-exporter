@@ -452,8 +452,9 @@ fn get_command() -> Command {
         )
         .arg(
             Arg::new(OPTION_CONTACTS_VCF)
+                .short('n')
                 .long(OPTION_CONTACTS_VCF)
-                .help("Optional path to VCF (vCard) contacts file for resolving contact names\nIf provided, phone numbers and email addresses in messages will be replaced with 'Name (phone/email)'\nIf omitted, the system will automatically look for VCF files in the ContactCards/ directory\n")
+                .help("Optional path to VCF (vCard) contacts file for resolving contact names\nIf provided, phone numbers and email addresses in messages will be replaced with 'Name (phone/email)'\n")
                 .display_order(15)
                 .value_name("path/to/contacts.vcf"),
         )
