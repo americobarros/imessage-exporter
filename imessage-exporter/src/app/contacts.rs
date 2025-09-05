@@ -96,10 +96,10 @@ impl VcfParser {
                         contact.phone_numbers.push(self.normalize_phone_number(value));
                     }
                 }
-                field if field.starts_with("EMAIL") => {
-                    // Email field
+                field if field.starts_with("EMAIL") || field.contains(".EMAIL") => {
+                    // Email field (handles both "EMAIL" and "item1.EMAIL" formats)
                     if !value.is_empty() {
-                        contact.emails.push(value.to_lowercase());
+                        contact.emails.push(value.trim().to_lowercase());
                     }
                 }
                 _ => {
@@ -110,10 +110,17 @@ impl VcfParser {
     }
 
     /// Store a contact for potential merging with duplicates
-    fn store_contact_for_merging(&mut self, contact: Contact) {
-        // Only process contacts that have a name
+    fn store_contact_for_merging(&mut self, mut contact: Contact) {
+        // If no name is provided, try to use the first email or phone as the name
         if contact.name.is_empty() {
-            return;
+            if !contact.emails.is_empty() {
+                contact.name = contact.emails[0].clone();
+            } else if !contact.phone_numbers.is_empty() {
+                contact.name = contact.phone_numbers[0].clone();
+            } else {
+                // No name, email, or phone - skip this contact
+                return;
+            }
         }
 
         let name = contact.name.clone();
@@ -418,5 +425,64 @@ mod tests {
             
         assert_eq!(alice_phone_entries.len(), 2); // Two phone numbers
         assert_eq!(alice_email_entries.len(), 1); // One email
+    }
+
+    #[test]
+    fn test_prefixed_email_parsing() {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        
+        // Test VCF with prefixed email field (like item1.EMAIL)
+        writeln!(temp_file, "BEGIN:VCARD").unwrap();
+        writeln!(temp_file, "VERSION:3.0").unwrap();
+        writeln!(temp_file, "FN:Test User").unwrap();
+        writeln!(temp_file, "item1.EMAIL;type=INTERNET;type=pref:test@example.com").unwrap();
+        writeln!(temp_file, "END:VCARD").unwrap();
+        temp_file.flush().unwrap();
+        
+        let mut parser = VcfParser::new();
+        parser.parse_vcf_file(temp_file.path()).unwrap();
+        
+        // Should find the email even with prefix
+        assert_eq!(parser.get_name_by_email("test@example.com"), Some(&"Test User".to_string()));
+        assert_eq!(parser.get_name_by_email("TEST@EXAMPLE.COM"), Some(&"Test User".to_string()));
+    }
+
+    #[test]
+    fn test_email_case_insensitive() {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        
+        writeln!(temp_file, "BEGIN:VCARD").unwrap();
+        writeln!(temp_file, "VERSION:3.0").unwrap();
+        writeln!(temp_file, "FN:Case Test").unwrap();
+        writeln!(temp_file, "EMAIL:MixedCase@Example.COM").unwrap();
+        writeln!(temp_file, "END:VCARD").unwrap();
+        temp_file.flush().unwrap();
+        
+        let mut parser = VcfParser::new();
+        parser.parse_vcf_file(temp_file.path()).unwrap();
+        
+        // All these should match
+        assert_eq!(parser.get_name_by_email("mixedcase@example.com"), Some(&"Case Test".to_string()));
+        assert_eq!(parser.get_name_by_email("MIXEDCASE@EXAMPLE.COM"), Some(&"Case Test".to_string()));
+        assert_eq!(parser.get_name_by_email("MixedCase@Example.COM"), Some(&"Case Test".to_string()));
+    }
+
+    #[test]
+    fn test_email_without_name() {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        
+        // Test VCF with email but no FN field (like in the real VCF file)
+        writeln!(temp_file, "BEGIN:VCARD").unwrap();
+        writeln!(temp_file, "VERSION:3.0").unwrap();
+        writeln!(temp_file, "N:;;;;").unwrap();
+        writeln!(temp_file, "EMAIL;type=INTERNET;type=pref:orphan@example.com").unwrap();
+        writeln!(temp_file, "END:VCARD").unwrap();
+        temp_file.flush().unwrap();
+        
+        let mut parser = VcfParser::new();
+        parser.parse_vcf_file(temp_file.path()).unwrap();
+        
+        // Should use the email as the name
+        assert_eq!(parser.get_name_by_email("orphan@example.com"), Some(&"orphan@example.com".to_string()));
     }
 }

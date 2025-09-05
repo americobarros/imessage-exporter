@@ -483,7 +483,6 @@ impl Options {
             conversation_filter: None,
             cleartext_password: None,
             contacts_vcf_path: None,
-            contacts_vcf_path: None,
         }
     }
 }
@@ -768,6 +767,7 @@ mod arg_tests {
             ignore_disk_space: false,
             conversation_filter: None,
             cleartext_password: Some("password".to_string()),
+            contacts_vcf_path: None,
         };
 
         assert_eq!(actual, expected);
@@ -885,6 +885,7 @@ mod arg_tests {
             ignore_disk_space: false,
             conversation_filter: Some(String::from("steve@apple.com")),
             cleartext_password: None,
+            contacts_vcf_path: None,
         };
 
         assert_eq!(actual, expected);
@@ -1019,6 +1020,7 @@ mod arg_tests {
             ignore_disk_space: true,
             conversation_filter: None,
             cleartext_password: None,
+            contacts_vcf_path: None,
         };
 
         assert_eq!(actual, expected);
