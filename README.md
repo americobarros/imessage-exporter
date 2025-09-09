@@ -1,11 +1,22 @@
 # imessage-exporter
 
+## Fork Notice
+
+This is a fork of the original [imessage-exporter](https://github.com/ReagentX/imessage-exporter) that adds VCF contact name resolution functionality. The main difference is the addition of a `-n, --contacts` option that allows you to specify a VCF file to resolve phone numbers and email addresses to contact names in exported conversations.
+
+**Key Addition:** Instead of seeing "Message from: +19059998799", you'll see "Message from: John Doe (+19059998799)" when using a VCF file.
+
+This feature was requested in [issue #62](https://github.com/ReagentX/imessage-exporter/issues/62) but marked as "wontfix" in the main repository. For alternative solutions that don't require this fork, see the discussion in that issue.
+
+---
+
 This crate provides both a library to interact with iMessage data as well as a binary that can perform some useful read-only operations using that data. The aim of this project is to provide the most comprehensive and accurate representation of iMessage data available.
 
 This free and open-source software can:
 
 - Save, export, backup, and archive iMessage data to open, portable formats
 - Preserve multimedia content (images, videos, audio) from conversations
+- Resolve contact names from VCF (vCard) files
 - Facilitate easy migration of message history between devices and platforms
 - Run diagnostics on the iMessage database
 - Give you full ownership and control over your communication history

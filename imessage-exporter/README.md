@@ -112,7 +112,11 @@ The [releases page](https://github.com/ReagentX/imessage-exporter/releases) prov
 -x, --cleartext-password <password>
         Optional password for encrypted iOS backups
         This is only used when the source is an encrypted iOS backup directory
-        
+
+-n, --contacts <path/to/contacts.vcf>
+        Optional path to VCF (vCard) contacts file for resolving contact names
+        If provided, phone numbers and email addresses in messages will be replaced with 'Name (phone/email)'
+
 -h, --help
         Print help
 -V, --version
@@ -181,6 +185,17 @@ Export messages from participants using email addresses but not phone numbers as
 imessage-exporter -f html -t "@"
 ```
 
+Export as `txt` with contact name resolution using a VCF file:
+
+```zsh
+imessage-exporter -f txt -n "~/Desktop/contacts.vcf" -o ~/export
+```
+
+Export as `html` with contact name resolution and attachment copying:
+
+```zsh
+imessage-exporter -f html -n "/path/to/contacts.vcf" -c full -o ~/export
+```
 ## Features
 
 [Click here](../docs/features.md) for a full list of features.
